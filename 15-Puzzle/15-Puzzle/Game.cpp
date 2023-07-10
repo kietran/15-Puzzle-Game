@@ -1,6 +1,8 @@
 #include "iostream"
+#include "iomanip"
 using namespace std;
 constexpr int g_consoleLines{ 25 }; //To print some empty line 
+static int moves{ 0 }; //Count moves have made
 
 class cDirection {
 public:
@@ -52,10 +54,15 @@ public:
 		}
 	}
 
-	static cDirection getRandomDirection() {
+	static cDirection Instruction() {
 		static int temp = 0;	//We use static here so the temp would not be init again everytime
 		Type random = static_cast<Type>(temp);	//We use static_cast to convert from int to Type.
 		temp++;
+		return cDirection{ random };
+	}
+
+	static cDirection getRandomDirection() {
+		Type random = static_cast<Type>(rand() % 4);	//We use static_cast to convert from int to Type.
 		return cDirection{ random };
 	}
 
@@ -80,13 +87,13 @@ public:
 	Point getAdjacentDirection(const cDirection& temp) {
 		switch (temp.getType()) {
 			case cDirection::up:
-				return Point{ x,y - 1 };
+				return Point{ x-1,y  };
 			case cDirection::down:
-				return Point{ x, y + 1 };
+				return Point{ x+1, y };
 			case cDirection::right:
-				return Point{ x + 1,y };
+				return Point{ x,y+1 };
 			case cDirection::left:
-				return Point{ x - 1,y };
+				return Point{ x,y-1 };
 			default:
 				return *this;
 		}
@@ -140,7 +147,7 @@ public:
 		this->number = number;
 	}
 
-	int getNum() {
+	int getNum() const{
 		return number;
 	}
 
@@ -180,7 +187,51 @@ public:
 			std::cout << '\n';
 	}
 
+	static bool isValidPoint(Point pt) {
+		return ((pt.x >= 0 && pt.x < 4) && (pt.y >= 0 && pt.y < 4));
+	}
+
+	Point getEmptyTile() {
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				if (board[i][j].isEmpty())
+					return { i,j };
+		cout << "EMPTY TILE DOES NOT EXIST" << endl;
+		return { -1,-1 };
+	}
+
+	void swapTile(Point p1, Point p2) {
+		swap(board[p1.x][p1.y], board[p2.x][p2.y]);
+	}
+
+	bool moveTile(cDirection dir) {
+		Point emptyTile{ getEmptyTile() };
+		Point adjPos{ emptyTile.getAdjacentDirection(-dir) };
+		if (!isValidPoint(adjPos))
+			return 0;
+		swapTile(emptyTile, adjPos);
+		return 1;
+	}
+
+	void randomize() {
+		srand(time(NULL));
+		for (int i = 0; i < 1000; i++)
+			moveTile(cDirection::getRandomDirection());
+	}
+
+	bool isWin() {
+		cBoard solved{};
+		return solved == *this;
+	}
+
 	friend ostream& operator <<(ostream&, const cBoard&);
+	friend bool operator==(const cBoard& b1, const cBoard& b2) {
+		for (int i = 0; i < 4; i++)
+			for (int j = 0; j < 4; j++)
+				if (b1.board[i][j].getNum() != b2.board[i][j].getNum())
+					return 0;
+		return 1;
+	}
 };
 ostream& operator <<(ostream& os, const cBoard& b) {
 	// Before drawing always print some empty lines
@@ -199,15 +250,25 @@ ostream& operator <<(ostream& os, const cBoard& b) {
 }
 
 int main() {
-	cBoard board;
+	char x;
+	cBoard board{};
+	cout << board;
+	cout << "Welcome to the puzzle game" << endl;
+	cout << "Press anything to start: " << endl;
+	cin >> x;
+	cin.ignore();
+	cout << "Generating.....\n" << endl;
+	board.randomize();
 	cout << board;
 
-	cout << "w: "<< cDirection::getRandomDirection() << endl;
-	cout << "s: "<<cDirection::getRandomDirection() << endl;
-	cout << "a: "<<cDirection::getRandomDirection() << endl;
-	cout << "d: "<<cDirection::getRandomDirection() << endl;
+	//Show instructions
+	cout << "w: "<< cDirection::Instruction() << endl;
+	cout << "s: "<<cDirection::Instruction() << endl;
+	cout << "a: "<<cDirection::Instruction() << endl;
+	cout << "d: "<<cDirection::Instruction() << endl;
+	cout << "q:" << " Exit the game" << endl;
 	cout << "\n\n\n";
-	while (1) {
+	while (!board.isWin()) {
 		char ch = UserInput::getCommandFromUser();
 
 		//Non-direction command
@@ -219,6 +280,13 @@ int main() {
 		//Direction command
 		cDirection dir{ UserInput::convertToDirection(ch) };
 		cout << "Valid: " << dir << endl;
+		bool userMoved{ board.moveTile(dir) };
+		if (userMoved) {
+			moves++;
+			cout << board;
+			cout << "                                                Moves: " << moves << endl;
+		}
 	}
+	cout << "\n\nYOU HAVE WON!!!!!!!!!!!!!!!!!" << endl;
 	return 0;
 }
